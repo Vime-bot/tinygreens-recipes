@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recipe Journal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F7F5F0;--surface:#FFFFFF;--surface2:#F0EDE6;--border:#E0DAD0;--border-strong:#C8C0B0;
+  --text:#1A1814;--text-2:#6B6358;--text-3:#A09880;
+  --accent:#2D5A3D;--accent-light:#E8F2EB;--accent-text:#1A3D27;
+  --warn:#8B5E00;--warn-bg:#FFF8E6;--danger:#8B2020;--danger-bg:#FFF0F0;
+  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+  --r:8px;--rl:12px;
+}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.5}
+.shell{display:flex;height:100vh;overflow:hidden}
+
+/* Sidebar */
+.sidebar{width:220px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
+.sidebar-header{padding:24px 20px 16px;border-bottom:1px solid var(--border)}
+.logo{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.logo-sub{font-size:11px;color:var(--text-3);margin-top:2px;font-family:var(--mono)}
+.nav{padding:12px 0;flex:1}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 20px;font-size:13px;color:var(--text-2);cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background .1s,color .1s;border-left:2px solid transparent}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--accent-light);color:var(--accent-text);border-left-color:var(--accent);font-weight:500}
+.nav-item svg{flex-shrink:0;opacity:.7}
+.nav-item.active svg{opacity:1}
+.nav-section-label{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);padding:16px 20px 6px}
+.saved-nav-item{display:flex;align-items:center;gap:8px;padding:7px 20px 7px 28px;font-size:12px;color:var(--text-2);cursor:pointer;border:none;background:none;width:100%;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background .1s}
+.saved-nav-item:hover{background:var(--surface2)}
+.saved-nav-dot{width:5px;height:5px;border-radius:50%;background:var(--border-strong);flex-shrink:0}
+
+/* Main */
+.main{flex:1;overflow-y:auto;padding:32px 40px;max-width:820px}
+.view{display:none}
+.view.active{display:block}
+.page-header{margin-bottom:28px}
+.page-title{font-size:22px;font-weight:500}
+.page-subtitle{font-size:13px;color:var(--text-2);margin-top:4px}
+
+/* Inputs */
+input[type="text"],input[type="number"]{font-family:var(--sans);font-size:13px;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:0 10px;height:34px;width:100%;outline:none;transition:border-color .15s}
+input[type="text"]:focus,input[type="number"]:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(45,90,61,.08)}
+input::placeholder{color:var(--text-3)}
+select{font-family:var(--sans);font-size:13px;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:0 10px;height:34px;outline:none;cursor:pointer}
+select:focus{border-color:var(--accent)}
+button{font-family:var(--sans);font-size:13px;cursor:pointer;border-radius:var(--r);transition:all .1s}
+.btn{padding:0 14px;height:34px;border:1px solid var(--border);background:var(--surface);color:var(--text);display:inline-flex;align-items:center;gap:6px}
+.btn:hover{background:var(--surface2);border-color:var(--border-strong)}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:500}
+.btn-primary:hover{background:var(--accent-text);border-color:var(--accent-text)}
+.btn-sm{height:28px;padding:0 10px;font-size:12px}
+.btn-icon-sm{width:28px;height:28px;padding:0;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border);background:var(--surface);border-radius:var(--r);color:var(--text-2)}
+.btn-icon-sm:hover{background:var(--surface2);color:var(--text)}
+
+/* Recipe name */
+.recipe-name-input{font-size:20px!important;font-weight:500!important;height:44px!important;border:none!important;border-bottom:1px solid var(--border)!important;border-radius:0!important;padding:0!important;background:transparent!important;margin-bottom:20px;box-shadow:none!important}
+.recipe-name-input:focus{border-bottom-color:var(--accent)!important;box-shadow:none!important}
+
+/* Ingredient table */
+.ing-col-heads{display:grid;grid-template-columns:minmax(0,1.8fr) 75px 80px 80px 80px 34px;gap:6px;padding:0 0 6px;border-bottom:1px solid var(--border);margin-bottom:8px}
+.ing-col-head{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3)}
+.ing-col-head:not(:first-child){text-align:right}
+.ing-row{display:grid;grid-template-columns:minmax(0,1.8fr) 75px 80px 80px 80px 34px;gap:6px;align-items:center;margin-bottom:6px}
+.ing-row input{text-align:right}
+.ing-row input:first-child{text-align:left}
+.unit-wrap{position:relative}
+.unit-wrap input{padding-right:30px!important}
+.unit-label{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:10px;color:var(--text-3);pointer-events:none}
+.lookup-btn{width:34px;height:34px;padding:0;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);background:var(--surface);border-radius:var(--r);color:var(--text-2)}
+.lookup-btn:hover{background:var(--accent-light);border-color:var(--accent);color:var(--accent)}
+.lookup-btn.spinning{opacity:.4;pointer-events:none}
+.lookup-btn.found{border-color:var(--accent);color:var(--accent);background:var(--accent-light)}
+
+/* Nutrient tabs */
+.ntabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
+.ntab{padding:5px 12px;font-size:12px;border:1px solid var(--border);background:var(--surface);color:var(--text-2);border-radius:20px}
+.ntab.active{background:var(--accent-light);border-color:rgba(45,90,61,.3);color:var(--accent-text);font-weight:500}
+.ntab-panel{display:none}
+.ntab-panel.active{display:block}
+
+/* Stats */
+.stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:20px 0}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:12px 14px}
+.stat-label{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin-bottom:5px}
+.stat-value{font-size:20px;font-weight:500;color:var(--text);line-height:1}
+.stat-unit{font-size:11px;font-weight:300;color:var(--text-2);margin-left:2px}
+
+/* Divider */
+hr{border:none;border-top:1px solid var(--border);margin:20px 0}
+
+/* Saved cards */
+.recipe-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:18px 20px;margin-bottom:12px}
+.recipe-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+.recipe-card-name{font-size:16px;font-weight:500}
+.recipe-card-date{font-family:var(--mono);font-size:11px;color:var(--text-3);margin-top:2px}
+.recipe-card-actions{display:flex;gap:6px}
+.recipe-pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.pill{font-family:var(--mono);font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;color:var(--text-2)}
+.pill.hi{background:var(--accent-light);border-color:rgba(45,90,61,.2);color:var(--accent-text)}
+.breakdown-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+.breakdown-table th{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);text-align:left;padding:0 8px 6px 0;border-bottom:1px solid var(--border)}
+.breakdown-table th:not(:first-child){text-align:right}
+.breakdown-table td{padding:6px 8px 6px 0;border-bottom:1px solid var(--border);color:var(--text-2)}
+.breakdown-table td:not(:first-child){text-align:right;font-family:var(--mono)}
+.breakdown-table tr:last-child td{border-bottom:none;font-weight:500;color:var(--text)}
+
+/* Export */
+.export-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:20px;margin-bottom:16px}
+.export-title{font-size:15px;font-weight:500;margin-bottom:4px}
+.export-desc{font-size:13px;color:var(--text-2);margin-bottom:16px;line-height:1.6}
+.sheets-status{font-family:var(--mono);font-size:11px;color:var(--text-3);margin-top:10px}
+.sheets-status.linked{color:var(--accent)}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:#fff;font-size:13px;padding:10px 16px;border-radius:var(--r);opacity:0;transform:translateY(8px);transition:all .2s;pointer-events:none;z-index:999;font-family:var(--mono)}
+.toast.show{opacity:1;transform:translateY(0)}
+
+/* Empty */
+.empty-state{text-align:center;padding:60px 20px;color:var(--text-3)}
+.empty-state p{font-size:14px;margin-bottom:16px}
+
+/* Label section */
+.label-select-row{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+.label-select-row label{font-size:13px;color:var(--text-2)}
+
+/* EU Label preview */
+.label-preview-wrap{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;margin-top:8px}
+.eu-label{background:#fff;border:2px solid #000;font-family:'Arial Narrow',Arial,sans-serif;width:240px;flex-shrink:0}
+.eu-label-title{background:#000;color:#fff;text-align:center;font-weight:700;font-size:13px;padding:4px 8px;letter-spacing:.05em;text-transform:uppercase}
+.eu-label-header{display:grid;grid-template-columns:1fr 80px 80px;font-size:10px;font-weight:700;padding:4px 6px 2px;border-bottom:1px solid #000;text-align:right}
+.eu-label-header span:first-child{text-align:left}
+.eu-label-row{display:grid;grid-template-columns:1fr 80px 80px;font-size:10px;padding:2px 6px;border-bottom:.5px solid #ccc;text-align:right}
+.eu-label-row span:first-child{text-align:left}
+.eu-label-row.bold{font-weight:700;border-bottom:1px solid #000}
+.eu-label-row.sub{padding-left:16px}
+.eu-label-row.section-top{border-top:1px solid #000}
+.eu-label-footer{font-size:8px;padding:4px 6px;color:#333;line-height:1.4;border-top:1px solid #000}
+.eu-label-portion{font-size:9px;padding:3px 6px;background:#f5f5f5;border-bottom:1px solid #000;font-style:italic}
+
+.label-actions{display:flex;gap:8px;flex-direction:column}
+.label-actions .btn{width:100%}
+.label-lang-toggle{display:flex;gap:6px;margin-bottom:16px}
+.lang-btn{padding:4px 14px;font-size:12px;border:1px solid var(--border);background:var(--surface);color:var(--text-2);border-radius:20px;cursor:pointer}
+.lang-btn.active{background:var(--accent-light);border-color:rgba(45,90,61,.3);color:var(--accent-text);font-weight:500}
+
+.label-missing{background:var(--warn-bg);border:1px solid rgba(139,94,0,.2);border-radius:var(--r);padding:12px 16px;font-size:13px;color:var(--warn);margin-bottom:16px}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{animation:spin .8s linear infinite;display:inline-block}
+
+/* Print */
+@media print{
+  .shell{display:block}
+  .sidebar,.main>.view:not(.active){display:none}
+  .main{padding:0;max-width:none}
+  .page-header,.label-select-row,.label-lang-toggle,.label-actions,.btn,.nav-item{display:none!important}
+  .eu-label{border:2px solid #000!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .eu-label-title{background:#000!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">Recipe Journal</div>
+    <div class="logo-sub">nutrition tracker</div>
+  </div>
+  <nav class="nav">
+    <button class="nav-item active" onclick="showView('log')" id="nav-log">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New recipe
+    </button>
+    <button class="nav-item" onclick="showView('saved')" id="nav-saved">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 4v4h8V4M8 14h8M8 18h5"/></svg>All recipes
+    </button>
+    <button class="nav-item" onclick="showView('label')" id="nav-label">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><circle cx="7" cy="7" r="1.5" fill="currentColor"/></svg>Label generator
+    </button>
+    <button class="nav-item" onclick="showView('export')" id="nav-export">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-4"/><path d="M14 3h7v7M21 3l-9 9"/></svg>Export
+    </button>
+  </nav>
+  <div>
+    <div class="nav-section-label">Saved</div>
+    <div id="sidebar-saved-list"></div>
+  </div>
+</aside>
+
+<main class="main">
+
+<!-- LOG VIEW -->
+<div class="view active" id="view-log">
+  <div class="page-header">
+    <div class="page-title">Log a recipe</div>
+    <div class="page-subtitle">Weigh each ingredient and look up its nutritional values.</div>
+  </div>
+  <input type="text" class="recipe-name-input" id="recipe-name" placeholder="Recipe name…">
+
+  <div class="ntabs">
+    <button class="ntab active" onclick="switchNtab('basic')">Basic (kcal · fat · carbs · protein · salt)</button>
+    <button class="ntab" onclick="switchNtab('extended')">Extended (fibre · vitamins · minerals)</button>
+  </div>
+
+  <!-- Basic tab -->
+  <div class="ntab-panel active" id="ntab-basic">
+    <div class="ing-col-heads">
+      <span class="ing-col-head">Ingredient</span>
+      <span class="ing-col-head">Weight g</span>
+      <span class="ing-col-head">kcal/100g</span>
+      <span class="ing-col-head">Fat g</span>
+      <span class="ing-col-head">Carbs g</span>
+      <span></span>
+    </div>
+    <div id="ing-rows-basic"></div>
+    <button class="btn btn-sm" onclick="addRow()" style="margin-top:4px">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>Add ingredient
+    </button>
+  </div>
+
+  <!-- Extended tab -->
+  <div class="ntab-panel" id="ntab-extended">
+    <p style="font-size:12px;color:var(--text-2);margin-bottom:12px">Enter per-ingredient values for fibre, vitamins and minerals — or use the lookup button to fill automatically.</p>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr id="ext-head-row" style="border-bottom:1px solid var(--border)"></tr>
+        </thead>
+        <tbody id="ing-rows-ext"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+    <span style="font-size:13px;color:var(--text-2)">Portions this batch yields</span>
+    <input type="number" id="portions" value="2" min="0.5" step="0.5" oninput="recalc()" style="width:70px;text-align:right">
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat-card"><div class="stat-label">Total weight</div><div class="stat-value" id="s-weight">—</div></div>
+    <div class="stat-card"><div class="stat-label">Per 100 g</div><div class="stat-value" id="s-100">—<span class="stat-unit">kcal</span></div></div>
+    <div class="stat-card"><div class="stat-label">Per portion</div><div class="stat-value" id="s-portion">—<span class="stat-unit">kcal</span></div></div>
+    <div class="stat-card"><div class="stat-label">Portions</div><div class="stat-value" id="s-portions">—</div></div>
+  </div>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:20px;padding-top:20px;border-top:1px solid var(--border)">
+    <span style="font-size:12px;color:var(--text-3)" id="save-hint">Add at least one ingredient to save.</span>
+    <button class="btn btn-primary" onclick="saveRecipe()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Save recipe
+    </button>
+  </div>
+</div>
+
+<!-- SAVED VIEW -->
+<div class="view" id="view-saved">
+  <div class="page-header">
+    <div class="page-title">All recipes</div>
+    <div class="page-subtitle" id="saved-count-label">0 recipes saved</div>
+  </div>
+  <div id="saved-list"></div>
+</div>
+
+<!-- LABEL VIEW -->
+<div class="view" id="view-label">
+  <div class="page-header">
+    <div class="page-title">Label generator</div>
+    <div class="page-subtitle">EU Regulation 1169/2011 compliant nutrition label — English &amp; Spanish.</div>
+  </div>
+
+  <div class="label-select-row">
+    <label>Recipe</label>
+    <select id="label-recipe-select" onchange="renderLabel()">
+      <option value="">— select a saved recipe —</option>
+    </select>
+  </div>
+
+  <div id="label-missing" class="label-missing" style="display:none"></div>
+
+  <div class="label-lang-toggle">
+    <button class="lang-btn active" id="lang-en" onclick="setLang('en')">English</button>
+    <button class="lang-btn" id="lang-es" onclick="setLang('es')">Español</button>
+  </div>
+
+  <div class="label-preview-wrap">
+    <div id="label-output"></div>
+    <div class="label-actions" id="label-actions" style="display:none">
+      <button class="btn btn-primary" onclick="printLabel()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Print / Save PDF
+      </button>
+      <button class="btn" onclick="copyLabelText()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Copy as text
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- EXPORT VIEW -->
+<div class="view" id="view-export">
+  <div class="page-header">
+    <div class="page-title">Export</div>
+    <div class="page-subtitle">Send your recipe data to Google Sheets or download as CSV.</div>
+  </div>
+  <div class="export-card">
+    <div class="export-title">Google Sheets — one master sheet</div>
+    <div class="export-desc">Each export overwrites a single sheet called <strong>Recipe Journal</strong> in your Drive with all saved recipes, full nutritional breakdown included.</div>
+    <button class="btn btn-primary" onclick="exportToSheets()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-4"/><path d="M14 3h7v7M21 3l-9 9"/></svg>Export all to Google Sheets
+    </button>
+    <div class="sheets-status" id="sheets-status">No export yet.</div>
+  </div>
+  <div class="export-card">
+    <div class="export-title">Download CSV</div>
+    <div class="export-desc">Download all recipes as a CSV file for any spreadsheet app.</div>
+    <button class="btn" onclick="downloadCSV()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download CSV
+    </button>
+  </div>
+</div>
+
+</main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Constants ──────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'recipe-journal-v2';
+const MICRO = ['iron','calcium','vitD','vitC','zinc'];
+const MICRO_NAMES_EN = {iron:'Iron',calcium:'Calcium',vitD:'Vitamin D',vitC:'Vitamin C',zinc:'Zinc'};
+const MICRO_NAMES_ES = {iron:'Hierro',calcium:'Calcio',vitD:'Vitamina D',vitC:'Vitamina C',zinc:'Zinc'};
+const MICRO_UNITS = {iron:'mg',calcium:'mg',vitD:'µg',vitC:'mg',zinc:'mg'};
+// EU Reference Intakes (adults, Annex XIII Reg 1169/2011)
+const MICRO_RI = {iron:14,calcium:800,vitD:5,vitC:80,zinc:10};
+
+// Basic fields: kcal, fat, saturates, carbs, sugars, protein, sodium(->salt), fibre
+const BASIC_FIELDS = ['kcal','fat','sat','carbs','sug','prot','sodium','fibre'];
+
+const LABELS = {
+  en: {
+    energy:'Energy', fat:'Fat', sat:'of which saturates', carbs:'Carbohydrate',
+    sug:'of which sugars', fibre:'Fibre', prot:'Protein', salt:'Salt',
+    per100:'Per 100g', perPortion:'Per portion', portionNote: s => `Per portion (${s}g)`,
+    title:'Nutrition declaration', viMin:'Vitamins & minerals',
+    riNote:'* % Reference intake of an average adult (8400 kJ / 2000 kcal)',
+    portionsInPack: (n,g) => `${n} portion${n!==1?'s':''} per pack · ${g}g per portion`
+  },
+  es: {
+    energy:'Valor energético', fat:'Grasas', sat:'de las cuales saturadas', carbs:'Hidratos de carbono',
+    sug:'de los cuales azúcares', fibre:'Fibra', prot:'Proteínas', salt:'Sal',
+    per100:'Por 100g', perPortion:'Por porción', portionNote: s => `Por porción (${s}g)`,
+    title:'Declaración nutricional', viMin:'Vitaminas y minerales',
+    riNote:'* % Ingesta de referencia de un adulto medio (8400 kJ / 2000 kcal)',
+    portionsInPack: (n,g) => `${n} porción${n!==1?'es':''} por envase · ${g}g por porción`
+  }
+};
+
+// ── State ──────────────────────────────────────────────────────────────────
+let rows = [];
+let rowId = 0;
+let currentLang = 'en';
+let currentNtab = 'basic';
+
+// ── Storage ────────────────────────────────────────────────────────────────
+function loadSaved() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]'); } catch { return []; }
+}
+function persist(data) { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+
+// ── Navigation ─────────────────────────────────────────────────────────────
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.getElementById('nav-'+name).classList.add('active');
+  if(name==='saved') renderSaved();
+  if(name==='label') initLabelView();
+  if(name==='export') renderExportStatus();
+}
+
+function switchNtab(tab) {
+  currentNtab = tab;
+  document.querySelectorAll('.ntab').forEach((t,i)=>t.classList.toggle('active',['basic','extended'][i]===tab));
+  document.querySelectorAll('.ntab-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('ntab-'+tab).classList.add('active');
+}
+
+// ── Row management ─────────────────────────────────────────────────────────
+function newRow(data) {
+  return {
+    id: rowId++,
+    name: data?.name||'',
+    weight: data?.weight||0,
+    kcal: data?.kcal||0,
+    fat: data?.fat||0,
+    sat: data?.sat||0,
+    carbs: data?.carbs||0,
+    sug: data?.sug||0,
+    prot: data?.prot||0,
+    sodium: data?.sodium||0,
+    fibre: data?.fibre||0,
+    iron: data?.iron||0,
+    calcium: data?.calcium||0,
+    vitD: data?.vitD||0,
+    vitC: data?.vitC||0,
+    zinc: data?.zinc||0
+  };
+}
+
+function addRow(data) {
+  rows.push(newRow(data));
+  renderAllRows();
+  if(!data) setTimeout(()=>{
+    const ins = document.querySelectorAll('#ing-rows-basic input[data-field="name"]');
+    if(ins.length) ins[ins.length-1].focus();
+  },20);
+}
+
+function removeRow(id) { rows=rows.filter(r=>r.id!==id); renderAllRows(); }
+
+function setField(id,field,val) {
+  const r=rows.find(r=>r.id===id);
+  if(r) r[field] = field==='name'?val:(parseFloat(val)||0);
+  recalc();
+}
+
+// ── Render basic rows ──────────────────────────────────────────────────────
+function renderAllRows() {
+  renderBasicRows();
+  renderExtRows();
+  recalc();
+}
+
+function renderBasicRows() {
+  const c=document.getElementById('ing-rows-basic');
+  c.innerHTML='';
+  rows.forEach(r=>{
+    const d=document.createElement('div');
+    d.className='ing-row';
+    d.id='brow-'+r.id;
+    d.innerHTML=`
+      <input type="text" placeholder="e.g. whole oats" value="${esc(r.name)}" data-field="name" oninput="setField(${r.id},'name',this.value)">
+      <input type="number" min="0" step="1" placeholder="0" value="${r.weight||''}">
+      <div class="unit-wrap"><input type="number" min="0" step="1" placeholder="?" value="${r.kcal||''}" oninput="setField(${r.id},'kcal',this.value)"><span class="unit-label">kcal</span></div>
+      <div class="unit-wrap"><input type="number" min="0" step=".1" placeholder="?" value="${r.fat||''}" oninput="setField(${r.id},'fat',this.value)"><span class="unit-label">g</span></div>
+      <div class="unit-wrap"><input type="number" min="0" step=".1" placeholder="?" value="${r.carbs||''}" oninput="setField(${r.id},'carbs',this.value)"><span class="unit-label">g</span></div>
+      <button class="lookup-btn" id="lb-${r.id}" title="Look up all nutrients" onclick="lookupAll(${r.id})">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      </button>`;
+    // weight input wiring
+    d.querySelectorAll('input')[1].oninput = function(){ setField(r.id,'weight',this.value); };
+    c.appendChild(d);
+  });
+}
+
+function renderExtRows() {
+  const head = document.getElementById('ext-head-row');
+  const body = document.getElementById('ing-rows-ext');
+  const extFields = ['sat','sug','prot','sodium','fibre',...MICRO];
+  const extLabels = ['Saturates','Sugars','Protein','Sodium','Fibre','Iron','Calcium','Vit D','Vit C','Zinc'];
+  head.innerHTML = `<th style="font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);padding:0 6px 6px 0;min-width:120px">Ingredient</th>`
+    + extFields.map((f,i)=>`<th style="font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);padding:0 6px 6px;text-align:right;min-width:64px">${extLabels[i]}</th>`).join('')
+    + `<th></th>`;
+  body.innerHTML='';
+  rows.forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.id='erow-'+r.id;
+    tr.style.borderBottom='1px solid var(--border)';
+    let cells=`<td style="padding:4px 6px 4px 0;font-size:12px;color:var(--text-2)">${r.name||'—'}</td>`;
+    extFields.forEach(f=>{
+      cells+=`<td style="padding:4px 6px"><div class="unit-wrap"><input type="number" min="0" step=".01" placeholder="?" value="${r[f]||''}" style="width:60px;text-align:right;font-size:12px;height:30px" oninput="setField(${r.id},'${f}',this.value)"></div></td>`;
+    });
+    cells+=`<td style="padding:4px 0 4px 4px"><button class="lookup-btn" id="lbe-${r.id}" style="width:28px;height:28px" title="Look up extended nutrients" onclick="lookupAll(${r.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></button></td>`;
+    tr.innerHTML=cells;
+    body.appendChild(tr);
+  });
+}
+
+// ── Calorie / nutrient lookup ──────────────────────────────────────────────
+async function lookupAll(id) {
+  const r=rows.find(r=>r.id===id);
+  if(!r||!r.name.trim()){showToast('Type an ingredient name first');return;}
+  ['lb-'+id,'lbe-'+id].forEach(bid=>{
+    const b=document.getElementById(bid);
+    if(b){b.classList.add('spinning');b.innerHTML='<span class="spin"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg></span>';}
+  });
+  try {
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:300,
+        system:'You are a nutrition database. Reply ONLY with valid JSON, no markdown. Keys: kcal_per_100g, fat_g, saturates_g, carbs_g, sugars_g, protein_g, sodium_mg, fibre_g, iron_mg, calcium_mg, vitD_ug, vitC_mg, zinc_mg. All numbers per 100g of raw/uncooked ingredient unless it is always consumed cooked (e.g. pasta). found: true/false.',
+        messages:[{role:'user',content:`Nutritional values per 100g for: "${r.name}"`}]
+      })
+    });
+    const data=await res.json();
+    const text=data.content?.find(b=>b.type==='text')?.text||'';
+    const parsed=JSON.parse(text.replace(/```json|```/g,'').trim());
+    r.kcal=Math.round(parsed.kcal_per_100g||0);
+    r.fat=+(parsed.fat_g||0).toFixed(2);
+    r.sat=+(parsed.saturates_g||0).toFixed(2);
+    r.carbs=+(parsed.carbs_g||0).toFixed(2);
+    r.sug=+(parsed.sugars_g||0).toFixed(2);
+    r.prot=+(parsed.protein_g||0).toFixed(2);
+    r.sodium=+(parsed.sodium_mg||0).toFixed(2);
+    r.fibre=+(parsed.fibre_g||0).toFixed(2);
+    r.iron=+(parsed.iron_mg||0).toFixed(3);
+    r.calcium=+(parsed.calcium_mg||0).toFixed(2);
+    r.vitD=+(parsed.vitD_ug||0).toFixed(3);
+    r.vitC=+(parsed.vitC_mg||0).toFixed(2);
+    r.zinc=+(parsed.zinc_mg||0).toFixed(3);
+    renderAllRows();
+    showToast(parsed.found?`Looked up: ${r.name}`:`Estimated: ${r.name}`);
+  } catch(e){
+    showToast('Lookup failed — enter manually');
+  }
+  ['lb-'+id,'lbe-'+id].forEach(bid=>{
+    const b=document.getElementById(bid);
+    if(b){b.classList.remove('spinning');b.classList.add('found');b.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
+    setTimeout(()=>{b.classList.remove('found');b.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>';},2000);}
+  });
+}
+
+// ── Calculations ───────────────────────────────────────────────────────────
+function calcTotals(rowsArr, portionCount) {
+  const valid=rowsArr.filter(r=>r.weight>0);
+  const totalW=valid.reduce((s,r)=>s+r.weight,0);
+  const sum=field=>valid.reduce((s,r)=>s+(r.weight*(r[field]||0)/100),0);
+  const kcal=sum('kcal'), fat=sum('fat'), sat=sum('sat'), carbs=sum('carbs'),
+        sug=sum('sug'), prot=sum('prot'), sodium=sum('sodium'),
+        fibre=sum('fibre');
+  const salt=sodium*2.5/1000; // sodium in mg -> salt in g
+  const micro={};
+  MICRO.forEach(m=>{ micro[m]=sum(m); });
+  const per100=v=>totalW>0?v/totalW*100:0;
+  const perPortion=v=>portionCount>0?v/portionCount:0;
+  const portionWeight=totalW>0?totalW/portionCount:0;
+  return {totalW, kcal, fat, sat, carbs, sug, prot, sodium, salt, fibre, micro,
+    per100:{
+      kcal:per100(kcal), fat:per100(fat), sat:per100(sat), carbs:per100(carbs),
+      sug:per100(sug), prot:per100(prot), salt:per100(salt), fibre:per100(fibre),
+      micro: Object.fromEntries(MICRO.map(m=>[m,per100(micro[m])]))
+    },
+    perPortion:{
+      weight:portionWeight,
+      kcal:perPortion(kcal), fat:perPortion(fat), sat:perPortion(sat), carbs:perPortion(carbs),
+      sug:perPortion(sug), prot:perPortion(prot), salt:perPortion(salt), fibre:perPortion(fibre),
+      micro: Object.fromEntries(MICRO.map(m=>[m,perPortion(micro[m])]))
+    }
+  };
+}
+
+function recalc() {
+  const portions=parseFloat(document.getElementById('portions').value)||1;
+  const t=calcTotals(rows,portions);
+  document.getElementById('s-weight').innerHTML=t.totalW>0?t.totalW.toFixed(0)+'<span class="stat-unit">g</span>':'—';
+  document.getElementById('s-100').innerHTML=t.totalW>0?t.per100.kcal.toFixed(1)+'<span class="stat-unit">kcal</span>':'—';
+  document.getElementById('s-portion').innerHTML=t.kcal>0?t.perPortion.kcal.toFixed(0)+'<span class="stat-unit">kcal</span>':'—';
+  document.getElementById('s-portions').textContent=portions;
+  const valid=rows.filter(r=>r.weight>0&&r.name.trim());
+  document.getElementById('save-hint').textContent=valid.length?'':'Add at least one ingredient to save.';
+}
+
+// ── Save recipe ────────────────────────────────────────────────────────────
+function saveRecipe() {
+  const name=document.getElementById('recipe-name').value.trim()||'Untitled recipe';
+  const portions=parseFloat(document.getElementById('portions').value)||1;
+  const valid=rows.filter(r=>r.weight>0&&r.name.trim());
+  if(!valid.length){showToast('Add at least one ingredient with a weight');return;}
+  const t=calcTotals(valid,portions);
+  const entry={
+    id:Date.now(),
+    date:new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}),
+    name, portions,
+    totalWeight:Math.round(t.totalW),
+    totals:t,
+    ingredients:valid.map(r=>({...r}))
+  };
+  const saved=loadSaved();
+  saved.unshift(entry);
+  persist(saved);
+  showToast('Recipe saved!');
+  refreshSidebarList();
+  // reset form
+  document.getElementById('recipe-name').value='';
+  rows=[]; rowId=0;
+  renderAllRows(); addRow();
+  document.getElementById('portions').value=2;
+  recalc();
+}
+
+// ── Render saved ───────────────────────────────────────────────────────────
+function renderSaved() {
+  const saved=loadSaved();
+  const list=document.getElementById('saved-list');
+  document.getElementById('saved-count-label').textContent=saved.length+' recipe'+(saved.length!==1?'s':'')+' saved';
+  if(!saved.length){
+    list.innerHTML='<div class="empty-state"><p>No recipes saved yet.</p><button class="btn btn-primary" onclick="showView(\'log\')">Log a recipe</button></div>';
+    return;
+  }
+  list.innerHTML='';
+  saved.forEach(e=>{
+    const t=e.totals;
+    const card=document.createElement('div');
+    card.className='recipe-card';
+    const portW=t.perPortion?.weight?Math.round(t.perPortion.weight):0;
+    const ingRows=e.ingredients.map(i=>`
+      <tr>
+        <td>${i.name}</td>
+        <td>${i.weight}g</td>
+        <td>${i.kcal||'—'}</td>
+        <td>${i.fat||'—'}</td>
+        <td>${i.carbs||'—'}</td>
+        <td>${i.prot||'—'}</td>
+        <td>${i.fibre||'—'}</td>
+      </tr>`).join('');
+    card.innerHTML=`
+      <div class="recipe-card-header">
+        <div>
+          <div class="recipe-card-name">${e.name}</div>
+          <div class="recipe-card-date">${e.date} · ${e.portions} portion${e.portions!==1?'s':''} · ${portW}g each</div>
+        </div>
+        <div class="recipe-card-actions">
+          <button class="btn btn-sm" onclick="loadRecipeToLabel(${e.id})">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><circle cx="7" cy="7" r="1" fill="currentColor"/></svg>Make label
+          </button>
+          <button class="btn-icon-sm" onclick="deleteRecipe(${e.id},event)" title="Delete">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="recipe-pills">
+        <span class="pill hi">${t.per100.kcal.toFixed(1)} kcal/100g</span>
+        <span class="pill hi">${t.perPortion.kcal.toFixed(0)} kcal/portion</span>
+        <span class="pill">${e.totalWeight}g total</span>
+        <span class="pill">Fat ${t.per100.fat.toFixed(1)}g</span>
+        <span class="pill">Carbs ${t.per100.carbs.toFixed(1)}g</span>
+        <span class="pill">Protein ${t.per100.prot.toFixed(1)}g</span>
+        <span class="pill">Salt ${t.per100.salt.toFixed(2)}g</span>
+        <span class="pill">Fibre ${t.per100.fibre.toFixed(1)}g</span>
+      </div>
+      <table class="breakdown-table">
+        <thead><tr><th>Ingredient</th><th>Weight</th><th>kcal/100g</th><th>Fat g</th><th>Carbs g</th><th>Protein g</th><th>Fibre g</th></tr></thead>
+        <tbody>${ingRows}</tbody>
+      </table>`;
+    list.appendChild(card);
+  });
+}
+
+function loadRecipeToLabel(id) {
+  showView('label');
+  setTimeout(()=>{
+    const sel=document.getElementById('label-recipe-select');
+    sel.value=id;
+    renderLabel();
+  },50);
+}
+
+function deleteRecipe(id,e) {
+  e.stopPropagation();
+  if(!confirm('Delete this recipe?')) return;
+  persist(loadSaved().filter(r=>r.id!==id));
+  renderSaved(); refreshSidebarList();
+  showToast('Deleted');
+}
+
+// ── Label view ─────────────────────────────────────────────────────────────
+function initLabelView() {
+  const saved=loadSaved();
+  const sel=document.getElementById('label-recipe-select');
+  const current=sel.value;
+  sel.innerHTML='<option value="">— select a saved recipe —</option>';
+  saved.forEach(e=>{
+    const o=document.createElement('option');
+    o.value=e.id; o.textContent=e.name+' ('+e.date+')';
+    sel.appendChild(o);
+  });
+  if(current) sel.value=current;
+  renderLabel();
+}
+
+function setLang(lang) {
+  currentLang=lang;
+  document.getElementById('lang-en').classList.toggle('active',lang==='en');
+  document.getElementById('lang-es').classList.toggle('active',lang==='es');
+  renderLabel();
+}
+
+function renderLabel() {
+  const sel=document.getElementById('label-recipe-select');
+  const out=document.getElementById('label-output');
+  const actions=document.getElementById('label-actions');
+  const missing=document.getElementById('label-missing');
+  missing.style.display='none';
+  out.innerHTML='';
+  actions.style.display='none';
+  if(!sel.value) return;
+  const entry=loadSaved().find(e=>e.id==sel.value);
+  if(!entry) return;
+
+  const t=entry.totals;
+  const L=LABELS[currentLang];
+  const p100=t.per100;
+  const pPor=t.perPortion;
+  const portW=Math.round(pPor.weight||0);
+  const portions=entry.portions;
+
+  // Check for missing data
+  const missingFields=[];
+  if(!p100.kcal) missingFields.push('calories');
+  if(!p100.fat && p100.fat!==0) missingFields.push('fat');
+  if(missingFields.length) {
+    missing.style.display='block';
+    missing.textContent='Some nutrient values are missing ('+missingFields.join(', ')+') — use the lookup button when logging to fill them in.';
+  }
+
+  // kJ conversion: 1 kcal = 4.184 kJ
+  const kj100=p100.kcal*4.184;
+  const kjPor=pPor.kcal*4.184;
+
+  const f=(v,d=1)=>v!=null&&v>0?v.toFixed(d):'0.0';
+  const f2=(v)=>v!=null?v.toFixed(2):'0.00';
+
+  // Micro rows
+  const microRows100=MICRO.map(m=>{
+    const val=p100.micro[m]||0;
+    const valPor=pPor.micro[m]||0;
+    const ri=MICRO_RI[m];
+    const pctRI=ri>0?(val/ri*100).toFixed(0):'—';
+    const name=currentLang==='en'?MICRO_NAMES_EN[m]:MICRO_NAMES_ES[m];
+    const unit=MICRO_UNITS[m];
+    return {name, val, valPor, pctRI, unit};
+  }).filter(m=>m.val>0||m.valPor>0);
+
+  let html=`<div class="eu-label">
+    <div class="eu-label-title">${L.title}</div>
+    <div class="eu-label-portion">${L.portionsInPack(portions,portW)}</div>
+    <div class="eu-label-header">
+      <span></span><span>${L.per100}</span><span>${L.perPortion}</span>
+    </div>
+    <div class="eu-label-row bold">
+      <span>${L.energy}</span>
+      <span>${Math.round(kj100)} kJ / ${Math.round(p100.kcal)} kcal</span>
+      <span>${Math.round(kjPor)} kJ / ${Math.round(pPor.kcal)} kcal</span>
+    </div>
+    <div class="eu-label-row bold"><span>${L.fat}</span><span>${f(p100.fat)}g</span><span>${f(pPor.fat)}g</span></div>
+    <div class="eu-label-row sub"><span>${L.sat}</span><span>${f(p100.sat)}g</span><span>${f(pPor.sat)}g</span></div>
+    <div class="eu-label-row bold"><span>${L.carbs}</span><span>${f(p100.carbs)}g</span><span>${f(pPor.carbs)}g</span></div>
+    <div class="eu-label-row sub"><span>${L.sug}</span><span>${f(p100.sug)}g</span><span>${f(pPor.sug)}g</span></div>
+    <div class="eu-label-row bold"><span>${L.fibre}</span><span>${f(p100.fibre)}g</span><span>${f(pPor.fibre)}g</span></div>
+    <div class="eu-label-row bold"><span>${L.prot}</span><span>${f(p100.prot)}g</span><span>${f(pPor.prot)}g</span></div>
+    <div class="eu-label-row bold"><span>${L.salt}</span><span>${f2(p100.salt)}g</span><span>${f2(pPor.salt)}g</span></div>`;
+
+  if(microRows100.length>0) {
+    html+=`<div class="eu-label-row section-top bold" style="font-size:9px;padding:3px 6px;background:#f9f9f9"><span>${L.viMin}</span><span>%RI*</span><span>%RI*</span></div>`;
+    microRows100.forEach(m=>{
+      const riPor=MICRO_RI[m.name]?((m.valPor/MICRO_RI[MICRO.find(k=>(currentLang==='en'?MICRO_NAMES_EN[k]:MICRO_NAMES_ES[k])===m.name)]||1)*100).toFixed(0):'—';
+      html+=`<div class="eu-label-row"><span>${m.name}</span><span>${m.val.toFixed(2)}${m.unit} (${m.pctRI}%)</span><span>${m.valPor.toFixed(2)}${m.unit}</span></div>`;
+    });
+    html+=`<div class="eu-label-footer">${L.riNote}</div>`;
+  }
+
+  html+=`</div>`;
+  out.innerHTML=html;
+  actions.style.display='flex';
+}
+
+function printLabel() { window.print(); }
+
+function copyLabelText() {
+  const sel=document.getElementById('label-recipe-select');
+  if(!sel.value){showToast('Select a recipe first');return;}
+  const entry=loadSaved().find(e=>e.id==sel.value);
+  if(!entry) return;
+  const t=entry.totals; const L=LABELS[currentLang];
+  const p100=t.per100; const pPor=t.perPortion;
+  const portW=Math.round(pPor.weight||0);
+  const kj100=(p100.kcal*4.184).toFixed(0);
+  const kjPor=(pPor.kcal*4.184).toFixed(0);
+  let txt=`${L.title} — ${entry.name}\n`;
+  txt+=`${entry.portions} portions · ${portW}g per portion\n\n`;
+  txt+=`                    ${L.per100}   ${L.perPortion}\n`;
+  txt+=`${L.energy.padEnd(20)}${(kj100+' kJ/'+Math.round(p100.kcal)+' kcal').padEnd(14)}${kjPor+' kJ/'+Math.round(pPor.kcal)+' kcal'}\n`;
+  txt+=`${L.fat.padEnd(20)}${(p100.fat.toFixed(1)+'g').padEnd(14)}${pPor.fat.toFixed(1)}g\n`;
+  txt+=`  ${L.sat.padEnd(18)}${(p100.sat.toFixed(1)+'g').padEnd(14)}${pPor.sat.toFixed(1)}g\n`;
+  txt+=`${L.carbs.padEnd(20)}${(p100.carbs.toFixed(1)+'g').padEnd(14)}${pPor.carbs.toFixed(1)}g\n`;
+  txt+=`  ${L.sug.padEnd(18)}${(p100.sug.toFixed(1)+'g').padEnd(14)}${pPor.sug.toFixed(1)}g\n`;
+  txt+=`${L.fibre.padEnd(20)}${(p100.fibre.toFixed(1)+'g').padEnd(14)}${pPor.fibre.toFixed(1)}g\n`;
+  txt+=`${L.prot.padEnd(20)}${(p100.prot.toFixed(1)+'g').padEnd(14)}${pPor.prot.toFixed(1)}g\n`;
+  txt+=`${L.salt.padEnd(20)}${(p100.salt.toFixed(2)+'g').padEnd(14)}${pPor.salt.toFixed(2)}g\n`;
+  navigator.clipboard.writeText(txt).then(()=>showToast('Copied to clipboard')).catch(()=>showToast('Copy failed'));
+}
+
+// ── Export ─────────────────────────────────────────────────────────────────
+function buildCSV(saved) {
+  const lines=['Recipe,Date,Ingredient,Weight(g),kcal/100g,Fat(g),Sat(g),Carbs(g),Sug(g),Prot(g),Sodium(mg),Fibre(g),Iron(mg),Calcium(mg),VitD(ug),VitC(mg),Zinc(mg),Total weight(g),kcal/100g(recipe),Fat/100g,Carbs/100g,Prot/100g,Salt/100g,Fibre/100g,kcal/portion,Portions'];
+  saved.forEach(e=>{
+    const t=e.totals;
+    e.ingredients.forEach((ing,i)=>{
+      if(i===0){
+        lines.push([`"${e.name}"`,e.date,`"${ing.name}"`,ing.weight,ing.kcal,ing.fat,ing.sat,ing.carbs,ing.sug,ing.prot,ing.sodium,ing.fibre,ing.iron,ing.calcium,ing.vitD,ing.vitC,ing.zinc,e.totalWeight,t.per100.kcal.toFixed(1),t.per100.fat.toFixed(1),t.per100.carbs.toFixed(1),t.per100.prot.toFixed(1),t.per100.salt.toFixed(2),t.per100.fibre.toFixed(1),t.perPortion.kcal.toFixed(0),e.portions].join(','));
+      } else {
+        lines.push(['','',`"${ing.name}"`,ing.weight,ing.kcal,ing.fat,ing.sat,ing.carbs,ing.sug,ing.prot,ing.sodium,ing.fibre,ing.iron,ing.calcium,ing.vitD,ing.vitC,ing.zinc,'','','','','','','','',''].join(','));
+      }
+    });
+    lines.push(Array(26).fill('').join(','));
+  });
+  return lines.join('\n');
+}
+
+function downloadCSV() {
+  const saved=loadSaved();
+  if(!saved.length){showToast('No recipes to export');return;}
+  const blob=new Blob([buildCSV(saved)],{type:'text/csv'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='recipe-journal.csv';
+  a.click();
+  showToast('CSV downloaded');
+}
+
+function exportToSheets() {
+  const saved=loadSaved();
+  if(!saved.length){showToast('No recipes saved yet');return;}
+  const csv=buildCSV(saved);
+  navigator.clipboard.writeText('Please export my recipe journal to Google Sheets (overwrite the existing "Recipe Journal" sheet). Here is the CSV data ('+saved.length+' recipes):\n\n'+csv)
+    .then(()=>showToast('Data copied — paste into Claude chat'))
+    .catch(()=>showToast('Copy failed — try Download CSV instead'));
+  localStorage.setItem('last-export-date',new Date().toLocaleDateString('en-GB'));
+}
+
+function renderExportStatus() {
+  const saved=loadSaved();
+  const el=document.getElementById('sheets-status');
+  const last=localStorage.getItem('last-export-date');
+  if(last){el.textContent='Last exported: '+last;el.className='sheets-status linked';}
+  else{el.textContent=saved.length+' recipe'+(saved.length!==1?'s':'')+' ready to export.';el.className='sheets-status';}
+}
+
+// ── Sidebar ────────────────────────────────────────────────────────────────
+function refreshSidebarList() {
+  const saved=loadSaved();
+  const el=document.getElementById('sidebar-saved-list');
+  el.innerHTML='';
+  saved.slice(0,8).forEach(e=>{
+    const btn=document.createElement('button');
+    btn.className='saved-nav-item';
+    btn.innerHTML=`<span class="saved-nav-dot"></span>${e.name}`;
+    btn.title=e.name;
+    btn.onclick=()=>{loadRecipeToLabel(e.id);};
+    el.appendChild(btn);
+  });
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(window._tt);
+  window._tt=setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// ── Utils ──────────────────────────────────────────────────────────────────
+function esc(s){return String(s).replace(/"/g,'&quot;');}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+addRow();
+refreshSidebarList();
+</script>
+</body>
+</html>
